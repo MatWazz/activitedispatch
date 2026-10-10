@@ -1,0 +1,1713 @@
+<!DOCTYPE html>
+<html lang="fr" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dispatch Ops Hub - Suivi de Service & Paie</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0f7ff',
+                            100: '#e0effe',
+                            500: '#0066ff',
+                            600: '#0052cc',
+                            700: '#003d99',
+                            900: '#001a40',
+                        },
+                        dark: {
+                            900: '#0B0F17',
+                            800: '#111827',
+                            700: '#1F2937',
+                            600: '#374151',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0B0F17;
+            color: #F3F4F6;
+        }
+        .font-mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .glow-effect {
+            box-shadow: 0 0 25px -5px rgba(0, 102, 255, 0.25);
+        }
+        .glow-gold {
+            box-shadow: 0 0 25px -5px rgba(234, 179, 8, 0.25);
+        }
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #111827;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #374151;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #4B5563;
+        }
+    </style>
+</head>
+<body class="bg-dark-900 text-gray-100 min-h-screen flex flex-col justify-between selection:bg-brand-500 selection:text-white">
+
+    <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none"></div>
+
+    <!-- Confirmation Modal replacing alert/confirm -->
+    <div id="confirm-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm hidden">
+        <div class="bg-dark-800 border border-gray-700 rounded-2xl p-6 max-w-sm w-full mx-4 shadow-2xl">
+            <div class="w-12 h-12 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 flex items-center justify-center mb-4 text-xl">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <h3 id="confirm-modal-title" class="text-lg font-bold text-white mb-2">Confirmation requise</h3>
+            <p id="confirm-modal-msg" class="text-xs text-gray-400 mb-6">Êtes-vous sûr de vouloir effectuer cette action ?</p>
+            <div class="flex gap-3">
+                <button id="confirm-modal-cancel" class="flex-1 py-2.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-xl text-xs font-semibold transition">Annuler</button>
+                <button id="confirm-modal-btn" class="flex-1 py-2.5 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-semibold transition">Confirmer</button>
+            </div>
+        </div>
+    </div>
+
+    <header id="main-header" class="hidden bg-dark-800/80 backdrop-blur-md border-b border-gray-800 sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <!-- Logo & Title -->
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-blue-400 flex items-center justify-center shadow-lg shadow-brand-500/30">
+                        <i class="fa-solid fa-headset text-xl text-white"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-lg font-bold tracking-wider uppercase text-white flex items-center gap-2">
+                            ACTIVITÉ <span class="text-brand-500">DISPATCH</span>
+                        </h1>
+                        <p class="text-xs text-gray-400">Système de Suivi & Rémunération</p>
+                    </div>
+                </div>
+
+                <!-- Navigation Tabs -->
+                <nav id="nav-tabs" class="hidden md:flex space-x-1 bg-dark-900/60 p-1 rounded-xl border border-gray-800">
+                    <button onclick="switchTab('my-space')" id="tab-my-space" class="px-4 py-2 rounded-lg text-sm font-medium transition-all text-white bg-brand-600">
+                        <i class="fa-solid fa-user-clock mr-2"></i>Mon Espace Service
+                    </button>
+                    <button onclick="switchTab('admin-space')" id="tab-admin-space" class="hidden px-4 py-2 rounded-lg text-sm font-medium text-gray-400 hover:text-white transition-all">
+                        <i class="fa-solid fa-shield-halved mr-2"></i>Gestion Global Lead
+                    </button>
+                    <button onclick="switchTab('logs-space')" id="tab-logs-space" class="hidden px-4 py-2 rounded-lg text-sm font-medium text-gray-400 hover:text-white transition-all">
+                        <i class="fa-solid fa-list-check mr-2"></i>Journal des Logs
+                    </button>
+                </nav>
+
+                <!-- User Info & Logout -->
+                <div class="flex items-center space-x-4">
+                    <div class="text-right">
+                        <div id="user-display-name" class="text-sm font-bold text-white flex items-center gap-2 justify-end"></div>
+                        <div id="user-display-role" class="text-xs font-mono text-gray-400"></div>
+                    </div>
+                    <button onclick="logout()" class="p-2.5 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all border border-gray-800 hover:border-red-500/20" title="Déconnexion">
+                        <i class="fa-solid fa-power-off text-lg"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <!-- Mobile Navigation -->
+        <div id="mobile-nav" class="md:hidden border-t border-gray-800 bg-dark-800 px-4 py-2 flex justify-around">
+            <button onclick="switchTab('my-space')" id="mobile-tab-my-space" class="text-xs text-brand-500 font-medium flex flex-col items-center py-1">
+                <i class="fa-solid fa-user-clock text-base mb-1"></i>Mon Espace
+            </button>
+            <button onclick="switchTab('admin-space')" id="mobile-tab-admin-space" class="hidden text-xs text-gray-400 font-medium flex flex-col items-center py-1">
+                <i class="fa-solid fa-shield-halved text-base mb-1"></i>Gestion Lead
+            </button>
+            <button onclick="switchTab('logs-space')" id="mobile-tab-logs-space" class="hidden text-xs text-gray-400 font-medium flex flex-col items-center py-1">
+                <i class="fa-solid fa-list-check text-base mb-1"></i>Logs
+            </button>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+        <!-- ================= LOGIN SCREEN ================= -->
+        <section id="login-section" class="flex items-center justify-center min-h-[75vh]">
+            <div class="w-full max-w-md bg-dark-800 border border-gray-800 rounded-2xl p-8 shadow-2xl glow-effect relative overflow-hidden">
+                <div class="absolute -top-12 -right-12 w-32 h-32 bg-brand-600/10 rounded-full blur-2xl"></div>
+                <div class="absolute -bottom-12 -left-12 w-32 h-32 bg-blue-600/10 rounded-full blur-2xl"></div>
+
+                <div class="text-center mb-8 relative">
+                    <div class="w-16 h-16 rounded-2xl bg-brand-600/10 border border-brand-500/30 flex items-center justify-center mx-auto mb-4 text-brand-500">
+                        <i class="fa-solid fa-id-card text-3xl"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold text-white tracking-tight">Authentification Agent</h2>
+                    <p class="text-sm text-gray-400 mt-1">Saisissez votre matricule pour accéder à votre fiche</p>
+                </div>
+
+                <form onsubmit="handleLogin(event)" class="space-y-5 relative">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Matricule Agent</label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-500">
+                                <i class="fa-solid fa-fingerprint"></i>
+                            </span>
+                            <input type="text" id="login-matricule" placeholder="Ex: 101, LEAD01..." required
+                                class="w-full pl-10 pr-4 py-3 bg-dark-900 border border-gray-700 rounded-xl text-white placeholder-gray-600 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 font-mono text-lg transition-all uppercase">
+                        </div>
+                    </div>
+
+                    <button type="submit" 
+                        class="w-full py-3.5 px-4 bg-gradient-to-r from-brand-600 to-blue-600 hover:from-brand-500 hover:to-blue-500 text-white font-semibold rounded-xl transition-all shadow-lg shadow-brand-600/30 flex items-center justify-center gap-2 group">
+                        <span>Se connecter</span>
+                        <i class="fa-solid fa-arrow-right group-hover:translate-x-1 transition-transform"></i>
+                    </button>
+                </form>
+
+                <div class="mt-8 pt-6 border-t border-gray-800/80 text-center text-xs text-gray-500">
+                    <p class="font-medium">Comptes de démonstration pré-configurés :</p>
+                    <div class="flex flex-wrap justify-center gap-2 mt-2 font-mono">
+                        <span onclick="setLoginMatricule('101')" class="cursor-pointer px-2 py-1 bg-dark-900 hover:bg-gray-800 rounded border border-gray-800 hover:border-gray-700 transition">101</span>
+                        <span onclick="setLoginMatricule('102')" class="cursor-pointer px-2 py-1 bg-dark-900 hover:bg-gray-800 rounded border border-gray-800 hover:border-gray-700 transition">102</span>
+                        <span onclick="setLoginMatricule('LEAD01')" class="cursor-pointer px-2 py-1 bg-brand-900/30 text-brand-400 hover:bg-brand-900/50 rounded border border-brand-800/50 transition">LEAD01</span>
+                        <span onclick="setLoginMatricule('COLEAD01')" class="cursor-pointer px-2 py-1 bg-brand-900/30 text-brand-400 hover:bg-brand-900/50 rounded border border-brand-800/50 transition">COLEAD01</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= AGENT SPACE (MY SPACE) ================= -->
+        <section id="my-space-section" class="hidden space-y-8">
+            <div class="bg-dark-800 border border-gray-800 rounded-2xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                        <span>Fiche Agent :</span>
+                        <span id="agent-profile-name" class="text-brand-500">---</span>
+                    </h2>
+                    <p class="text-xs text-gray-400 mt-1">Saisie des sessions de service Dispatch et décompte hebdomadaire de rémunération.</p>
+                </div>
+
+                <!-- Week Selector Navigation -->
+                <div class="flex items-center space-x-3 bg-dark-900 p-1.5 rounded-xl border border-gray-800 self-start md:self-auto">
+                    <button onclick="changeWeek(-1)" class="p-2 hover:bg-dark-800 text-gray-400 hover:text-white rounded-lg transition" title="Semaine précédente">
+                        <i class="fa-solid fa-chevron-left"></i>
+                    </button>
+                    <div class="text-center px-3">
+                        <span id="current-week-label" class="text-xs font-semibold uppercase tracking-wider text-gray-400 block">Semaine</span>
+                        <span id="current-week-dates" class="text-xs font-mono text-brand-400">01/01 - 07/01</span>
+                    </div>
+                    <button onclick="changeWeek(1)" class="p-2 hover:bg-dark-800 text-gray-400 hover:text-white rounded-lg transition" title="Semaine suivante">
+                        <i class="fa-solid fa-chevron-right"></i>
+                    </button>
+                    <button onclick="resetToCurrentWeek()" class="px-2.5 py-1 text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg transition font-medium">Aujourd'hui</button>
+                </div>
+            </div>
+
+            <!-- Stats Overview Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-dark-800 border border-gray-800 rounded-2xl p-5 relative overflow-hidden">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-xs font-semibold uppercase text-gray-400">Total Heures Service</p>
+                            <h3 id="stat-total-hours" class="text-2xl font-extrabold font-mono text-white mt-2">0.0 h</h3>
+                        </div>
+                        <div class="p-3 bg-blue-500/10 text-blue-400 rounded-xl border border-blue-500/20">
+                            <i class="fa-solid fa-clock text-xl"></i>
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-3 flex items-center gap-1">
+                        <i class="fa-solid fa-calendar-week"></i> Sur la semaine sélectionnée
+                    </p>
+                </div>
+
+                <div class="bg-dark-800 border border-gray-800 rounded-2xl p-5 relative overflow-hidden">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-xs font-semibold uppercase text-gray-400">Tranche Jour (00h-21h)</p>
+                            <h3 id="stat-std-hours" class="text-2xl font-extrabold font-mono text-emerald-400 mt-2">0.0 h</h3>
+                            <p id="stat-std-pay" class="text-xs font-mono text-emerald-500/80 font-medium mt-0.5">0 $ (1000$/h)</p>
+                        </div>
+                        <div class="p-3 bg-emerald-500/10 text-emerald-400 rounded-xl border border-emerald-500/20">
+                            <i class="fa-solid fa-sun text-xl"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-dark-800 border border-gray-800 rounded-2xl p-5 relative overflow-hidden">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-xs font-semibold uppercase text-gray-400">Tranche Nuit (21h-00h)</p>
+                            <h3 id="stat-night-hours" class="text-2xl font-extrabold font-mono text-purple-400 mt-2">0.0 h</h3>
+                            <p id="stat-night-pay" class="text-xs font-mono text-purple-500/80 font-medium mt-0.5">0 $ (2000$/h)</p>
+                        </div>
+                        <div class="p-3 bg-purple-500/10 text-purple-400 rounded-xl border border-purple-500/20">
+                            <i class="fa-solid fa-moon text-xl"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-dark-800 border border-gray-800 rounded-2xl p-5 relative overflow-hidden glow-gold border-amber-500/30">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-xs font-semibold uppercase text-amber-400/80">Rémunération Totale</p>
+                            <h3 id="stat-total-pay" class="text-3xl font-extrabold font-mono text-amber-400 mt-2">0 $</h3>
+                        </div>
+                        <div class="p-3 bg-amber-500/10 text-amber-400 rounded-xl border border-amber-500/20">
+                            <i class="fa-solid fa-sack-dollar text-xl"></i>
+                        </div>
+                    </div>
+                    <p class="text-xs text-amber-500/70 mt-2 font-medium">Cumul calculé automatiquement</p>
+                </div>
+            </div>
+
+            <!-- Form & Table Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <!-- Left: Add Shift Form -->
+                <div class="lg:col-span-1">
+                    <div class="bg-dark-800 border border-gray-800 rounded-2xl p-6 sticky top-24">
+                        <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                            <i class="fa-solid fa-plus-circle text-brand-500"></i>
+                            Saisir un Service
+                        </h3>
+
+                        <form onsubmit="handleSaveShift(event)" class="space-y-4">
+                            <input type="hidden" id="shift-id">
+                            
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Date du service</label>
+                                <input type="date" id="shift-date" required
+                                    class="w-full bg-dark-900 border border-gray-700 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-brand-500 font-mono text-sm">
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Prise (Début)</label>
+                                    <input type="time" id="shift-start" required
+                                        class="w-full bg-dark-900 border border-gray-700 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-brand-500 font-mono text-sm">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Fin de Service</label>
+                                    <input type="time" id="shift-end" required
+                                        class="w-full bg-dark-900 border border-gray-700 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-brand-500 font-mono text-sm">
+                                </div>
+                            </div>
+
+                            <div class="p-3 bg-dark-900/80 rounded-xl border border-gray-800 text-xs text-gray-400 space-y-1">
+                                <div class="flex justify-between">
+                                    <span>Taux Jour (00h-21h) :</span>
+                                    <span class="font-mono text-emerald-400">1 000 $/h</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span>Taux Nuit (21h-00h) :</span>
+                                    <span class="font-mono text-purple-400">2 000 $/h</span>
+                                </div>
+                            </div>
+
+                            <div class="flex gap-2 pt-2">
+                                <button type="submit" id="btn-save-shift"
+                                    class="flex-1 bg-brand-600 hover:bg-brand-500 text-white font-semibold py-3 px-4 rounded-xl transition shadow-lg shadow-brand-600/20 text-sm flex items-center justify-center gap-2">
+                                    <i class="fa-solid fa-check"></i> Enregistrer le Service
+                                </button>
+                                <button type="button" id="btn-cancel-edit" onclick="resetShiftForm()" class="hidden bg-gray-700 hover:bg-gray-600 text-white px-3 rounded-xl transition">
+                                    <i class="fa-solid fa-xmark"></i>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Right: Shifts History Table for current week -->
+                <div class="lg:col-span-2 space-y-4">
+                    <div class="bg-dark-800 border border-gray-800 rounded-2xl overflow-hidden">
+                        <div class="p-5 border-b border-gray-800 flex items-center justify-between">
+                            <h3 class="text-base font-bold text-white flex items-center gap-2">
+                                <i class="fa-solid fa-list-ul text-brand-500"></i>
+                                Historique des Prises de Service
+                            </h3>
+                            <span id="shift-count-badge" class="text-xs bg-dark-900 text-gray-400 border border-gray-700 px-2.5 py-1 rounded-full font-mono">0 entrée(s)</span>
+                        </div>
+
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-sm">
+                                <thead class="bg-dark-900/50 text-gray-400 uppercase text-[11px] font-semibold tracking-wider border-b border-gray-800">
+                                    <tr>
+                                        <th class="py-3 px-4">Date</th>
+                                        <th class="py-3 px-4">Horaires</th>
+                                        <th class="py-3 px-4">Durée Total</th>
+                                        <th class="py-3 px-4">Ventilation (Jour / Nuit)</th>
+                                        <th class="py-3 px-4 text-right">Rémunération</th>
+                                        <th class="py-3 px-4 text-center">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="shifts-tbody" class="divide-y divide-gray-800/60 font-mono text-xs">
+                                    <!-- Dynamic rows -->
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div id="shifts-empty" class="p-8 text-center text-gray-500">
+                            <i class="fa-regular fa-folder-open text-3xl mb-2 block text-gray-600"></i>
+                            Aucune prise de service enregistrée pour cette semaine.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= LEAD / ADMIN SPACE ================= -->
+        <section id="admin-space-section" class="hidden space-y-8">
+            <div class="bg-dark-800 border border-gray-800 rounded-2xl p-6">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-crown text-amber-400"></i>
+                            <span>Espace de Supervision Lead & Co-Lead</span>
+                        </h2>
+                        <p class="text-xs text-gray-400 mt-1">Vue consolidée de l'effectif, récapitulatif financier, gestion des rôles et des accès.</p>
+                    </div>
+
+                    <div class="flex items-center space-x-3 bg-dark-900 p-1.5 rounded-xl border border-gray-800">
+                        <button onclick="changeWeek(-1)" class="p-2 hover:bg-dark-800 text-gray-400 hover:text-white rounded-lg transition">
+                            <i class="fa-solid fa-chevron-left"></i>
+                        </button>
+                        <div class="text-center px-3">
+                            <span class="text-xs font-semibold uppercase tracking-wider text-gray-400 block">Période</span>
+                            <span id="admin-week-dates" class="text-xs font-mono text-brand-400">01/01 - 07/01</span>
+                        </div>
+                        <button onclick="changeWeek(1)" class="p-2 hover:bg-dark-800 text-gray-400 hover:text-white rounded-lg transition">
+                            <i class="fa-solid fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- KPI Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+                <div class="bg-dark-800 border border-gray-800 rounded-2xl p-5">
+                    <p class="text-xs font-semibold uppercase text-gray-400">Effectif Recensé</p>
+                    <h3 id="admin-stat-agents" class="text-3xl font-extrabold font-mono text-white mt-2">0</h3>
+                    <p class="text-xs text-gray-500 mt-1">Dispatchers enregistrés sur le site</p>
+                </div>
+                <div class="bg-dark-800 border border-gray-800 rounded-2xl p-5">
+                    <p class="text-xs font-semibold uppercase text-gray-400">Heures Totales Servies</p>
+                    <h3 id="admin-stat-hours" class="text-3xl font-extrabold font-mono text-blue-400 mt-2">0.0 h</h3>
+                    <p class="text-xs text-gray-500 mt-1">Cumul global sur la semaine</p>
+                </div>
+                <div class="bg-dark-800 border border-gray-800 rounded-2xl p-5 glow-gold border-amber-500/20">
+                    <p class="text-xs font-semibold uppercase text-amber-400">Masse Salariale Semaine</p>
+                    <h3 id="admin-stat-payout" class="text-3xl font-extrabold font-mono text-amber-400 mt-2">0 $</h3>
+                    <p class="text-xs text-amber-500/60 mt-1">Montant global à rémunérer</p>
+                </div>
+            </div>
+
+            <!-- Subtabs navigation -->
+            <div class="flex border-b border-gray-800 space-x-6 text-sm font-semibold overflow-x-auto">
+                <button onclick="toggleAdminSubTab('summary')" id="subtab-btn-summary" class="pb-3 border-b-2 border-brand-500 text-brand-400 whitespace-nowrap">
+                    <i class="fa-solid fa-table-list mr-2"></i>Récapitulatif des Paies Agents
+                </button>
+                <button onclick="toggleAdminSubTab('agents')" id="subtab-btn-agents" class="pb-3 border-b-2 border-transparent text-gray-400 hover:text-white whitespace-nowrap">
+                    <i class="fa-solid fa-users-gear mr-2"></i>Gestion de l'Effectif
+                </button>
+                <button onclick="toggleAdminSubTab('roles')" id="subtab-btn-roles" class="pb-3 border-b-2 border-transparent text-gray-400 hover:text-white whitespace-nowrap">
+                    <i class="fa-solid fa-tags mr-2"></i>Configuration des Rôles & Accès
+                </button>
+            </div>
+
+            <!-- Subtab 1: Summary -->
+            <div id="admin-subtab-summary" class="bg-dark-800 border border-gray-800 rounded-2xl overflow-hidden">
+                <div class="p-5 border-b border-gray-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <h3 class="text-base font-bold text-white">Tableau Synthétique des Agents</h3>
+                    <div class="flex items-center gap-3">
+                        <input type="text" id="admin-search-agent" oninput="renderAdminSummary()" placeholder="Rechercher agent ou matricule..."
+                            class="bg-dark-900 border border-gray-700 rounded-xl px-3 py-1.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-brand-500">
+                        <button onclick="exportPaySummary()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-file-export"></i> Copier Récapitulatif
+                        </button>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-dark-900/50 text-gray-400 uppercase text-[11px] font-semibold tracking-wider border-b border-gray-800">
+                            <tr>
+                                <th class="py-3.5 px-4">Matricule / Nom</th>
+                                <th class="py-3.5 px-4">Rôle</th>
+                                <th class="py-3.5 px-4">Heures Std (1k$)</th>
+                                <th class="py-3.5 px-4">Heures Nuit (2k$)</th>
+                                <th class="py-3.5 px-4">Total Heures</th>
+                                <th class="py-3.5 px-4 text-right">Salaire Dû</th>
+                                <th class="py-3.5 px-4 text-center">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-summary-tbody" class="divide-y divide-gray-800/60 font-mono text-xs">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Subtab 2: Agent Roster -->
+            <div id="admin-subtab-agents" class="hidden grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div class="lg:col-span-1">
+                    <div class="bg-dark-800 border border-gray-800 rounded-2xl p-6">
+                        <h3 class="text-base font-bold text-white mb-4 flex items-center gap-2">
+                            <i class="fa-solid fa-user-plus text-brand-500"></i>
+                            Ajouter / Modifier un Agent
+                        </h3>
+                        <form onsubmit="handleSaveAgent(event)" class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Matricule Unique</label>
+                                <input type="text" id="agent-form-matricule" required placeholder="Ex: 104..."
+                                    class="w-full bg-dark-900 border border-gray-700 rounded-xl px-3.5 py-2.5 text-white font-mono text-sm focus:outline-none focus:border-brand-500 uppercase">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Nom / Pseudonyme</label>
+                                <input type="text" id="agent-form-name" required placeholder="Ex: Agent John"
+                                    class="w-full bg-dark-900 border border-gray-700 rounded-xl px-3.5 py-2.5 text-white text-sm focus:outline-none focus:border-brand-500">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Rôle & Permissions</label>
+                                <select id="agent-form-role" class="w-full bg-dark-900 border border-gray-700 rounded-xl px-3.5 py-2.5 text-white text-sm focus:outline-none focus:border-brand-500">
+                                </select>
+                            </div>
+                            <button type="submit" class="w-full bg-brand-600 hover:bg-brand-500 text-white font-semibold py-3 rounded-xl transition shadow-lg text-sm">
+                                Enregistrer dans l'Effectif
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-2">
+                    <div class="bg-dark-800 border border-gray-800 rounded-2xl overflow-hidden">
+                        <div class="p-5 border-b border-gray-800">
+                            <h3 class="text-base font-bold text-white">Liste des Dispatchers Autorisés</h3>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-sm">
+                                <thead class="bg-dark-900/50 text-gray-400 uppercase text-[11px] font-semibold tracking-wider border-b border-gray-800">
+                                    <tr>
+                                        <th class="py-3 px-4">Matricule</th>
+                                        <th class="py-3 px-4">Nom</th>
+                                        <th class="py-3 px-4">Rôle</th>
+                                        <th class="py-3 px-4 text-center">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="admin-roster-tbody" class="divide-y divide-gray-800/60 font-mono text-xs">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Subtab 3: Roles & Permissions Management -->
+            <div id="admin-subtab-roles" class="hidden max-w-3xl mx-auto">
+                <div class="bg-dark-800 border border-gray-800 rounded-2xl p-6 space-y-6">
+                    <div>
+                        <h3 class="text-base font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-pen-ruler text-brand-500"></i>
+                            Gestion des Rôles & Niveau d'Accès
+                        </h3>
+                        <p class="text-xs text-gray-400 mt-1">
+                            Créez ou modifiez des rôles personnalisés en leur attribuant un libellé, une couleur et le niveau d'accès (Accès Total vs Espace Agent uniquement).
+                        </p>
+                    </div>
+
+                    <!-- Create New Role Form with Access Toggle -->
+                    <form onsubmit="handleCreateNewRole(event)" class="bg-dark-900/60 border border-gray-800 rounded-xl p-4 space-y-4">
+                        <h4 class="text-xs font-bold text-brand-400 uppercase tracking-wider flex items-center gap-1.5">
+                            <i class="fa-solid fa-plus-circle"></i> Créer un Nouveau Rôle
+                        </h4>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            <div>
+                                <label class="block text-[11px] font-semibold text-gray-400 uppercase mb-1">Code du Rôle</label>
+                                <input type="text" id="new-role-code" required placeholder="Ex: SUPERVISOR"
+                                    class="w-full bg-dark-900 border border-gray-700 rounded-xl px-3 py-2 text-white font-mono text-xs focus:outline-none focus:border-brand-500 uppercase">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-semibold text-gray-400 uppercase mb-1">Libellé Affiché</label>
+                                <input type="text" id="new-role-label" required placeholder="Ex: Superviseur"
+                                    class="w-full bg-dark-900 border border-gray-700 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-brand-500">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-semibold text-gray-400 uppercase mb-1">Couleur Badge</label>
+                                <div class="flex items-center gap-2">
+                                    <input type="color" id="new-role-color" value="#3b82f6"
+                                        class="h-9 w-12 bg-dark-900 border border-gray-700 rounded-lg p-0.5 cursor-pointer">
+                                    <span id="new-role-badge-preview" class="px-2 py-1 rounded text-[10px] font-bold border" style="background-color: rgba(59, 130, 246, 0.15); color: #3b82f6; border-color: rgba(59, 130, 246, 0.4);">Aperçu</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Access Level Toggle Selection -->
+                        <div class="pt-2 border-t border-gray-800/80">
+                            <label class="block text-[11px] font-semibold text-gray-400 uppercase mb-2">Niveau d'Accès au Site</label>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <label class="flex items-center gap-3 p-3 bg-dark-900 border border-gray-700 rounded-xl cursor-pointer hover:border-gray-600 transition">
+                                    <input type="radio" name="new-role-access" value="agent" checked class="text-brand-500 focus:ring-brand-500">
+                                    <div>
+                                        <div class="text-xs font-bold text-white flex items-center gap-1.5">
+                                            <i class="fa-solid fa-user text-blue-400"></i> Accès Agent
+                                        </div>
+                                        <div class="text-[10px] text-gray-400">Uniquement la fiche personnelle</div>
+                                    </div>
+                                </label>
+                                <label class="flex items-center gap-3 p-3 bg-dark-900 border border-gray-700 rounded-xl cursor-pointer hover:border-gray-600 transition">
+                                    <input type="radio" name="new-role-access" value="full" class="text-brand-500 focus:ring-brand-500">
+                                    <div>
+                                        <div class="text-xs font-bold text-amber-400 flex items-center gap-1.5">
+                                            <i class="fa-solid fa-shield-halved"></i> Accès Total (Admin)
+                                        </div>
+                                        <div class="text-[10px] text-gray-400">Gestion global, logs & fiches</div>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2.5 rounded-xl transition text-xs flex items-center justify-center gap-1.5 shadow-lg">
+                            <i class="fa-solid fa-plus"></i> Ajouter le Rôle
+                        </button>
+                    </form>
+
+                    <!-- Edit Existing Roles and Permissions -->
+                    <form onsubmit="handleSaveRoleNames(event)" class="space-y-4 pt-2 border-t border-gray-800">
+                        <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider">Libellés, Couleurs et Droits des Rôles Existants</h4>
+                        <div id="roles-inputs-container" class="space-y-3">
+                        </div>
+
+                        <div class="pt-2">
+                            <button type="submit" class="w-full bg-brand-600 hover:bg-brand-500 text-white font-semibold py-3 rounded-xl transition shadow-lg text-sm flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-floppy-disk"></i> Enregistrer les Modifications des Rôles
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= LOGS SPACE ================= -->
+        <section id="logs-space-section" class="hidden space-y-6">
+            <div class="bg-dark-800 border border-gray-800 rounded-2xl p-6 flex items-center justify-between">
+                <div>
+                    <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-list-check text-brand-500"></i>
+                        <span>Journal des Activités & Logs</span>
+                    </h2>
+                    <p class="text-xs text-gray-400 mt-1">Traçabilité complète des actions effectuées sur la plateforme.</p>
+                </div>
+                <button onclick="clearLogs()" class="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 rounded-xl text-xs font-semibold transition">
+                    <i class="fa-solid fa-trash-can mr-1.5"></i> Vider les Logs
+                </button>
+            </div>
+
+            <div class="bg-dark-800 border border-gray-800 rounded-2xl overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-dark-900/50 text-gray-400 uppercase text-[11px] font-semibold tracking-wider border-b border-gray-800">
+                            <tr>
+                                <th class="py-3 px-4">Date / Heure</th>
+                                <th class="py-3 px-4">Auteur</th>
+                                <th class="py-3 px-4">Action</th>
+                                <th class="py-3 px-4">Détails</th>
+                            </tr>
+                        </thead>
+                        <tbody id="logs-tbody" class="divide-y divide-gray-800/60 font-mono text-xs">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-dark-800/40 border-t border-gray-800/80 py-4 text-center text-xs text-gray-500">
+        <p>Activité Dispatch &bull; Système de Suivi & Rémunération des Opérateurs</p>
+    </footer>
+
+    <script>
+        const STORAGE_KEY_AGENTS = 'dispatch_agents_v1';
+        const STORAGE_KEY_SHIFTS = 'dispatch_shifts_v1';
+        const STORAGE_KEY_LOGS = 'dispatch_logs_v1';
+        const STORAGE_KEY_ROLE_NAMES = 'dispatch_role_names_v1';
+        const STORAGE_KEY_ROLE_COLORS = 'dispatch_role_colors_v1';
+        const STORAGE_KEY_ROLE_PERMS = 'dispatch_role_perms_v1';
+
+        const DEFAULT_AGENTS = [
+            { matricule: '101', name: 'John Miller', role: 'AGENT' },
+            { matricule: '102', name: 'Sarah Connor', role: 'AGENT' },
+            { matricule: '103', name: 'Alex Murphy', role: 'AGENT' },
+            { matricule: 'LEAD01', name: 'Marcus Vance', role: 'LEAD' },
+            { matricule: 'COLEAD01', name: 'Elena Rostova', role: 'COLEAD' }
+        ];
+
+        const DEFAULT_ROLE_NAMES = {
+            AGENT: 'Dispatcher',
+            LEAD: 'Lead Dispatcher',
+            COLEAD: 'Co-Lead Dispatcher'
+        };
+
+        const DEFAULT_ROLE_COLORS = {
+            AGENT: '#3b82f6',
+            LEAD: '#f59e0b',
+            COLEAD: '#8b5cf6'
+        };
+
+        const DEFAULT_ROLE_PERMS = {
+            AGENT: false,  // false = standard agent access only
+            LEAD: true,    // true = full admin access
+            COLEAD: true   // true = full admin access
+        };
+
+        let currentUser = null;
+        let originalLeadUser = null;
+        let currentWeekOffset = 0;
+
+        function getRoleNames() {
+            const data = localStorage.getItem(STORAGE_KEY_ROLE_NAMES);
+            return data ? JSON.parse(data) : DEFAULT_ROLE_NAMES;
+        }
+
+        function saveRoleNames(roles) {
+            localStorage.setItem(STORAGE_KEY_ROLE_NAMES, JSON.stringify(roles));
+        }
+
+        function getRoleColors() {
+            const data = localStorage.getItem(STORAGE_KEY_ROLE_COLORS);
+            return data ? JSON.parse(data) : DEFAULT_ROLE_COLORS;
+        }
+
+        function saveRoleColors(colors) {
+            localStorage.setItem(STORAGE_KEY_ROLE_COLORS, JSON.stringify(colors));
+        }
+
+        function getRolePermissions() {
+            const data = localStorage.getItem(STORAGE_KEY_ROLE_PERMS);
+            return data ? JSON.parse(data) : DEFAULT_ROLE_PERMS;
+        }
+
+        function saveRolePermissions(perms) {
+            localStorage.setItem(STORAGE_KEY_ROLE_PERMS, JSON.stringify(perms));
+        }
+
+        function hasFullAccess(roleKey) {
+            const perms = getRolePermissions();
+            if (roleKey === 'LEAD' || roleKey === 'COLEAD') return true;
+            return !!perms[roleKey];
+        }
+
+        function getRoleLabel(roleKey) {
+            const names = getRoleNames();
+            return names[roleKey] || roleKey;
+        }
+
+        function getRoleColor(roleKey) {
+            const colors = getRoleColors();
+            return colors[roleKey] || '#3b82f6';
+        }
+
+        function renderRoleBadgeHtml(roleKey) {
+            const label = getRoleLabel(roleKey);
+            const hex = getRoleColor(roleKey);
+            const isFull = hasFullAccess(roleKey);
+            const accessIcon = isFull ? ' <i class="fa-solid fa-crown text-[9px] ml-1" title="Accès Total"></i>' : '';
+            return `<span class="px-2 py-0.5 rounded text-[10px] font-bold border inline-flex items-center gap-1" style="background-color: ${hex}20; color: ${hex}; border-color: ${hex}50;">${label}${accessIcon}</span>`;
+        }
+
+        // Custom Modal Confirmation Helper replacing confirm()
+        function openConfirmModal(title, message, onConfirm) {
+            const modal = document.getElementById('confirm-modal');
+            const titleEl = document.getElementById('confirm-modal-title');
+            const msgEl = document.getElementById('confirm-modal-msg');
+            const btnCancel = document.getElementById('confirm-modal-cancel');
+            const btnConfirm = document.getElementById('confirm-modal-btn');
+
+            titleEl.innerText = title;
+            msgEl.innerText = message;
+
+            modal.classList.remove('hidden');
+
+            const cleanup = () => {
+                modal.classList.add('hidden');
+                btnConfirm.onclick = null;
+                btnCancel.onclick = null;
+            };
+
+            btnCancel.onclick = cleanup;
+            btnConfirm.onclick = () => {
+                cleanup();
+                onConfirm();
+            };
+        }
+
+        function getAgents() {
+            const data = localStorage.getItem(STORAGE_KEY_AGENTS);
+            return data ? JSON.parse(data) : DEFAULT_AGENTS;
+        }
+
+        function saveAgents(agents) {
+            localStorage.setItem(STORAGE_KEY_AGENTS, JSON.stringify(agents));
+        }
+
+        function getShifts() {
+            const data = localStorage.getItem(STORAGE_KEY_SHIFTS);
+            return data ? JSON.parse(data) : generateMockShifts();
+        }
+
+        function saveShifts(shifts) {
+            localStorage.setItem(STORAGE_KEY_SHIFTS, JSON.stringify(shifts));
+        }
+
+        function getLogs() {
+            const data = localStorage.getItem(STORAGE_KEY_LOGS);
+            return data ? JSON.parse(data) : [];
+        }
+
+        function saveLogs(logs) {
+            localStorage.setItem(STORAGE_KEY_LOGS, JSON.stringify(logs));
+        }
+
+        function addLog(actionType, details) {
+            const logs = getLogs();
+            logs.unshift({
+                id: 'log_' + Date.now(),
+                timestamp: new Date().toLocaleString('fr-FR'),
+                author: currentUser ? currentUser.matricule : 'SYSTEM',
+                action: actionType,
+                details: details
+            });
+            saveLogs(logs);
+        }
+
+        function generateMockShifts() {
+            const today = new Date();
+            const formatLocalDate = (d) => d.toISOString().split('T')[0];
+            
+            const mock = [
+                { id: 's1', matricule: '101', date: formatLocalDate(today), startTime: '14:00', endTime: '22:30' },
+                { id: 's2', matricule: '101', date: formatLocalDate(new Date(Date.now() - 86400000)), startTime: '18:00', endTime: '23:30' },
+                { id: 's3', matricule: '102', date: formatLocalDate(today), startTime: '09:00', endTime: '17:00' },
+                { id: 's4', matricule: '102', date: formatLocalDate(today), startTime: '20:00', endTime: '23:30' },
+                { id: 's5', matricule: 'LEAD01', date: formatLocalDate(today), startTime: '12:00', endTime: '20:00' }
+            ];
+            localStorage.setItem(STORAGE_KEY_SHIFTS, JSON.stringify(mock));
+            return mock;
+        }
+
+        function calculateShiftDetails(startTimeStr, endTimeStr) {
+            const [startH, startM] = startTimeStr.split(':').map(Number);
+            const [endH, endM] = endTimeStr.split(':').map(Number);
+
+            let startMinutes = startH * 60 + startM;
+            let endMinutes = endH * 60 + endM;
+
+            if (endMinutes < startMinutes) {
+                endMinutes += 24 * 60;
+            }
+
+            const totalMinutes = endMinutes - startMinutes;
+            const totalHours = totalMinutes / 60;
+
+            let stdMinutes = 0;
+            let nightMinutes = 0;
+
+            for (let m = startMinutes; m < endMinutes; m++) {
+                const currentMinuteInDay = m % (24 * 60);
+                if (currentMinuteInDay >= 21 * 60 && currentMinuteInDay < 24 * 60) {
+                    nightMinutes++;
+                } else {
+                    stdMinutes++;
+                }
+            }
+
+            const stdHours = stdMinutes / 60;
+            const nightHours = nightMinutes / 60;
+
+            const stdPay = stdHours * 1000;
+            const nightPay = nightHours * 2000;
+            const totalPay = stdPay + nightPay;
+
+            return {
+                totalHours: parseFloat(totalHours.toFixed(2)),
+                stdHours: parseFloat(stdHours.toFixed(2)),
+                nightHours: parseFloat(nightHours.toFixed(2)),
+                stdPay,
+                nightPay,
+                totalPay
+            };
+        }
+
+        function getWeekRange(offset = 0) {
+            const now = new Date();
+            const dayOfWeek = now.getDay();
+            const distanceToMonday = (dayOfWeek === 0 ? -6 : 1) - dayOfWeek;
+            
+            const monday = new Date(now);
+            monday.setDate(now.getDate() + distanceToMonday + (offset * 7));
+            monday.setHours(0, 0, 0, 0);
+
+            const sunday = new Date(monday);
+            sunday.setDate(monday.getDate() + 6);
+            sunday.setHours(23, 59, 59, 999);
+
+            return { monday, sunday };
+        }
+
+        function formatDateFr(date) {
+            return date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' });
+        }
+
+        function isDateInWeek(dateStr, monday, sunday) {
+            const d = new Date(dateStr + 'T00:00:00');
+            return d >= monday && d <= sunday;
+        }
+
+        function setLoginMatricule(mat) {
+            document.getElementById('login-matricule').value = mat;
+        }
+
+        function handleLogin(e) {
+            e.preventDefault();
+            const matriculeInput = document.getElementById('login-matricule').value.trim().toUpperCase();
+            const agents = getAgents();
+            const foundAgent = agents.find(a => a.matricule.toUpperCase() === matriculeInput);
+
+            if (!foundAgent) {
+                showToast(`Matricule '${matriculeInput}' non reconnu dans l'effectif autorisé.`, 'error');
+                return;
+            }
+
+            currentUser = foundAgent;
+            originalLeadUser = null;
+
+            document.getElementById('login-section').classList.add('hidden');
+            document.getElementById('main-header').classList.remove('hidden');
+
+            const isFull = hasFullAccess(currentUser.role);
+
+            if (isFull) {
+                document.getElementById('tab-admin-space').classList.remove('hidden');
+                document.getElementById('mobile-tab-admin-space').classList.remove('hidden');
+                document.getElementById('tab-logs-space').classList.remove('hidden');
+                document.getElementById('mobile-tab-logs-space').classList.remove('hidden');
+            } else {
+                document.getElementById('tab-admin-space').classList.add('hidden');
+                document.getElementById('mobile-tab-admin-space').classList.add('hidden');
+                document.getElementById('tab-logs-space').classList.add('hidden');
+                document.getElementById('mobile-tab-logs-space').classList.add('hidden');
+            }
+
+            document.getElementById('user-display-name').innerHTML = `
+                ${currentUser.name} 
+                ${isFull ? '<i class="fa-solid fa-crown text-amber-400" title="Accès Supervision"></i>' : ''}
+            `;
+            document.getElementById('user-display-role').innerText = `Matricule: ${currentUser.matricule} | Rôle: ${getRoleLabel(currentUser.role)}`;
+
+            addLog('CONNEXION', `Connexion de l'agent ${currentUser.name} (${currentUser.matricule})`);
+            showToast(`Bienvenue, ${currentUser.name} !`, 'success');
+
+            switchTab('my-space');
+        }
+
+        function logout() {
+            if (originalLeadUser) {
+                currentUser = originalLeadUser;
+                originalLeadUser = null;
+            }
+            addLog('DECO', `Déconnexion de l'agent ${currentUser ? currentUser.name : ''}`);
+            currentUser = null;
+            originalLeadUser = null;
+
+            document.getElementById('main-header').classList.add('hidden');
+            document.getElementById('login-section').classList.remove('hidden');
+            document.getElementById('my-space-section').classList.add('hidden');
+            document.getElementById('admin-space-section').classList.add('hidden');
+            document.getElementById('logs-space-section').classList.add('hidden');
+            document.getElementById('login-matricule').value = '';
+
+            showToast('Session fermée.', 'info');
+        }
+
+        function switchTab(tabName) {
+            if (tabName !== 'my-space' && originalLeadUser) {
+                currentUser = originalLeadUser;
+                originalLeadUser = null;
+                document.getElementById('user-display-name').innerHTML = `
+                    ${currentUser.name} 
+                    <i class="fa-solid fa-crown text-amber-400"></i>
+                `;
+                document.getElementById('user-display-role').innerText = `Matricule: ${currentUser.matricule} | Rôle: ${getRoleLabel(currentUser.role)}`;
+                showToast(`Retour à votre session Superviseur (${currentUser.name})`, 'info');
+            }
+
+            const tabs = ['my-space', 'admin-space', 'logs-space'];
+            tabs.forEach(t => {
+                const sec = document.getElementById(`${t}-section`);
+                const btn = document.getElementById(`tab-${t}`);
+                const mobBtn = document.getElementById(`mobile-tab-${t}`);
+
+                if (t === tabName) {
+                    if (sec) sec.classList.remove('hidden');
+                    if (btn) {
+                        btn.classList.add('bg-brand-600', 'text-white');
+                        btn.classList.remove('text-gray-400');
+                    }
+                    if (mobBtn) {
+                        mobBtn.classList.add('text-brand-500');
+                        mobBtn.classList.remove('text-gray-400');
+                    }
+                } else {
+                    if (sec) sec.classList.add('hidden');
+                    if (btn) {
+                        btn.classList.remove('bg-brand-600', 'text-white');
+                        btn.classList.add('text-gray-400');
+                    }
+                    if (mobBtn) {
+                        mobBtn.classList.remove('text-brand-500');
+                        mobBtn.classList.add('text-gray-400');
+                    }
+                }
+            });
+
+            if (tabName === 'my-space') renderAgentSpace();
+            if (tabName === 'admin-space') renderAdminSpace();
+            if (tabName === 'logs-space') renderLogsSpace();
+        }
+
+        function updateWeekHeader() {
+            const { monday, sunday } = getWeekRange(currentWeekOffset);
+            const dateStr = `${formatDateFr(monday)} - ${formatDateFr(sunday)}`;
+            const lbl = document.getElementById('current-week-dates');
+            const adminLbl = document.getElementById('admin-week-dates');
+            if (lbl) lbl.innerText = dateStr;
+            if (adminLbl) adminLbl.innerText = dateStr;
+        }
+
+        function changeWeek(direction) {
+            currentWeekOffset += direction;
+            updateWeekHeader();
+            if (!document.getElementById('my-space-section').classList.contains('hidden')) {
+                renderAgentSpace();
+            }
+            if (!document.getElementById('admin-space-section').classList.contains('hidden')) {
+                renderAdminSummary();
+            }
+        }
+
+        function resetToCurrentWeek() {
+            currentWeekOffset = 0;
+            updateWeekHeader();
+            if (!document.getElementById('my-space-section').classList.contains('hidden')) {
+                renderAgentSpace();
+            }
+            if (!document.getElementById('admin-space-section').classList.contains('hidden')) {
+                renderAdminSummary();
+            }
+        }
+
+        function renderAgentSpace() {
+            if (!currentUser) return;
+            updateWeekHeader();
+            document.getElementById('agent-profile-name').innerText = `${currentUser.name} (${currentUser.matricule}) - ${getRoleLabel(currentUser.role)}`;
+
+            const dateInput = document.getElementById('shift-date');
+            if (!dateInput.value) {
+                dateInput.value = new Date().toISOString().split('T')[0];
+            }
+
+            const { monday, sunday } = getWeekRange(currentWeekOffset);
+            const shifts = getShifts().filter(s => s.matricule === currentUser.matricule);
+            const weekShifts = shifts.filter(s => isDateInWeek(s.date, monday, sunday));
+
+            let totalH = 0;
+            let stdH = 0;
+            let nightH = 0;
+            let totalP = 0;
+            let stdP = 0;
+            let nightP = 0;
+
+            weekShifts.forEach(s => {
+                const dt = calculateShiftDetails(s.startTime, s.endTime);
+                totalH += dt.totalHours;
+                stdH += dt.stdHours;
+                nightH += dt.nightHours;
+                totalP += dt.totalPay;
+                stdP += dt.stdPay;
+                nightP += dt.nightPay;
+            });
+
+            document.getElementById('stat-total-hours').innerText = totalH.toFixed(1) + ' h';
+            document.getElementById('stat-std-hours').innerText = stdH.toFixed(1) + ' h';
+            document.getElementById('stat-std-pay').innerText = stdP.toLocaleString('fr-FR') + ' $ (1000$/h)';
+            document.getElementById('stat-night-hours').innerText = nightH.toFixed(1) + ' h';
+            document.getElementById('stat-night-pay').innerText = nightP.toLocaleString('fr-FR') + ' $ (2000$/h)';
+            document.getElementById('stat-total-pay').innerText = totalP.toLocaleString('fr-FR') + ' $';
+            document.getElementById('shift-count-badge').innerText = weekShifts.length + ' entrée(s)';
+
+            const tbody = document.getElementById('shifts-tbody');
+            tbody.innerHTML = '';
+            const emptyDiv = document.getElementById('shifts-empty');
+
+            if (weekShifts.length === 0) {
+                emptyDiv.classList.remove('hidden');
+            } else {
+                emptyDiv.classList.add('hidden');
+                weekShifts.forEach(s => {
+                    const dt = calculateShiftDetails(s.startTime, s.endTime);
+                    const tr = document.createElement('tr');
+                    tr.className = 'hover:bg-dark-900/40 border-b border-gray-800/50';
+                    tr.innerHTML = `
+                        <td class="py-3 px-4 text-white font-bold">${s.date}</td>
+                        <td class="py-3 px-4 text-brand-400 font-mono"><i class="fa-solid fa-clock mr-1 text-[10px]"></i>${s.startTime} - ${s.endTime}</td>
+                        <td class="py-3 px-4 text-white font-bold">${dt.totalHours} h</td>
+                        <td class="py-3 px-4">
+                            <span class="text-emerald-400">${dt.stdHours}h Std</span> / 
+                            <span class="text-purple-400">${dt.nightHours}h Nuit</span>
+                        </td>
+                        <td class="py-3 px-4 text-right text-amber-400 font-bold">${dt.totalPay.toLocaleString('fr-FR')} $</td>
+                        <td class="py-3 px-4 text-center">
+                            <div class="flex items-center justify-center gap-1.5">
+                                <button onclick="editShift('${s.id}')" class="p-1.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded-lg transition" title="Modifier">
+                                    <i class="fa-solid fa-pen text-xs"></i>
+                                </button>
+                                <button onclick="deleteShift('${s.id}')" class="p-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition" title="Supprimer">
+                                    <i class="fa-solid fa-trash text-xs"></i>
+                                </button>
+                            </div>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+        }
+
+        function handleSaveShift(e) {
+            e.preventDefault();
+            if (!currentUser) return;
+
+            const id = document.getElementById('shift-id').value;
+            const date = document.getElementById('shift-date').value;
+            const startTime = document.getElementById('shift-start').value;
+            const endTime = document.getElementById('shift-end').value;
+
+            if (!date || !startTime || !endTime) {
+                showToast('Veuillez remplir tous les champs du service.', 'error');
+                return;
+            }
+
+            let shifts = getShifts();
+
+            if (id) {
+                shifts = shifts.map(s => s.id === id ? { ...s, date, startTime, endTime } : s);
+                addLog('MODIF_SHIFT', `Service modifié pour ${currentUser.name} (${date} ${startTime}-${endTime})`);
+                showToast('Service mis à jour avec succès.', 'success');
+            } else {
+                const newShift = {
+                    id: 'shift_' + Date.now(),
+                    matricule: currentUser.matricule,
+                    date,
+                    startTime,
+                    endTime
+                };
+                shifts.push(newShift);
+                addLog('AJOUT_SHIFT', `Nouveau service enregistré pour ${currentUser.name} (${date} ${startTime}-${endTime})`);
+                showToast('Service enregistré avec succès.', 'success');
+            }
+
+            saveShifts(shifts);
+            resetShiftForm();
+            renderAgentSpace();
+        }
+
+        function editShift(id) {
+            const shifts = getShifts();
+            const shift = shifts.find(s => s.id === id);
+            if (!shift) return;
+
+            document.getElementById('shift-id').value = shift.id;
+            document.getElementById('shift-date').value = shift.date;
+            document.getElementById('shift-start').value = shift.startTime;
+            document.getElementById('shift-end').value = shift.endTime;
+            document.getElementById('btn-save-shift').innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Mettre à jour';
+            document.getElementById('btn-cancel-edit').classList.remove('hidden');
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function resetShiftForm() {
+            document.getElementById('shift-id').value = '';
+            document.getElementById('shift-start').value = '';
+            document.getElementById('shift-end').value = '';
+            document.getElementById('btn-save-shift').innerHTML = '<i class="fa-solid fa-check"></i> Enregistrer le Service';
+            document.getElementById('btn-cancel-edit').classList.add('hidden');
+        }
+
+        function deleteShift(id) {
+            openConfirmModal('Supprimer ce service', 'Voulez-vous vraiment supprimer cette session de service ?', () => {
+                let shifts = getShifts();
+                shifts = shifts.filter(s => s.id !== id);
+                saveShifts(shifts);
+                addLog('SUPPR_SHIFT', `Suppression d'une session de service`);
+                showToast('Service supprimé.', 'info');
+                renderAgentSpace();
+            });
+        }
+
+        function renderAdminSpace() {
+            populateRoleSelectOptions();
+            populateRoleInputsAndPerms();
+            renderAdminSummary();
+            renderAdminRoster();
+        }
+
+        function toggleAdminSubTab(subTabName) {
+            const subtabs = ['summary', 'agents', 'roles'];
+            subtabs.forEach(st => {
+                const el = document.getElementById(`admin-subtab-${st}`);
+                const btn = document.getElementById(`subtab-btn-${st}`);
+                if (st === subTabName) {
+                    if (el) el.classList.remove('hidden');
+                    if (btn) {
+                        btn.classList.add('border-brand-500', 'text-brand-400');
+                        btn.classList.remove('border-transparent', 'text-gray-400');
+                    }
+                } else {
+                    if (el) el.classList.add('hidden');
+                    if (btn) {
+                        btn.classList.remove('border-brand-500', 'text-brand-400');
+                        btn.classList.add('border-transparent', 'text-gray-400');
+                    }
+                }
+            });
+        }
+
+        function renderAdminSummary() {
+            const agents = getAgents();
+            const shifts = getShifts();
+            const { monday, sunday } = getWeekRange(currentWeekOffset);
+            const searchQuery = (document.getElementById('admin-search-agent')?.value || '').toLowerCase();
+
+            let totalAgentsCount = agents.length;
+            let grandTotalHours = 0;
+            let grandTotalPayout = 0;
+
+            const tbody = document.getElementById('admin-summary-tbody');
+            if (tbody) tbody.innerHTML = '';
+
+            agents.forEach(agent => {
+                if (searchQuery && !agent.name.toLowerCase().includes(searchQuery) && !agent.matricule.toLowerCase().includes(searchQuery)) {
+                    return;
+                }
+
+                const agentShifts = shifts.filter(s => s.matricule === agent.matricule && isDateInWeek(s.date, monday, sunday));
+                let stdH = 0;
+                let nightH = 0;
+                let agentPay = 0;
+
+                agentShifts.forEach(s => {
+                    const dt = calculateShiftDetails(s.startTime, s.endTime);
+                    stdH += dt.stdHours;
+                    nightH += dt.nightHours;
+                    agentPay += dt.totalPay;
+                });
+
+                const totalAgentH = stdH + nightH;
+                grandTotalHours += totalAgentH;
+                grandTotalPayout += agentPay;
+
+                if (tbody) {
+                    const tr = document.createElement('tr');
+                    tr.className = 'hover:bg-dark-900/40 border-b border-gray-800/50';
+                    tr.innerHTML = `
+                        <td class="py-3 px-4">
+                            <div class="font-bold text-white">${agent.name}</div>
+                            <div class="text-[10px] text-gray-400">Mat: ${agent.matricule}</div>
+                        </td>
+                        <td class="py-3 px-4">
+                            ${renderRoleBadgeHtml(agent.role)}
+                        </td>
+                        <td class="py-3 px-4 text-emerald-400">${stdH.toFixed(1)} h</td>
+                        <td class="py-3 px-4 text-purple-400">${nightH.toFixed(1)} h</td>
+                        <td class="py-3 px-4 font-bold text-white">${totalAgentH.toFixed(1)} h</td>
+                        <td class="py-3 px-4 text-right font-bold text-amber-400">${agentPay.toLocaleString('fr-FR')} $</td>
+                        <td class="py-3 px-4 text-center">
+                            <button onclick="inspectAgentShifts('${agent.matricule}')" class="px-2.5 py-1 bg-brand-500/10 hover:bg-brand-500/20 text-brand-400 rounded-lg text-xs font-semibold transition border border-brand-500/20" title="Consulter la fiche détaillée">
+                                <i class="fa-solid fa-eye mr-1"></i> Fiche
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                }
+            });
+
+            const elAgents = document.getElementById('admin-stat-agents');
+            const elHours = document.getElementById('admin-stat-hours');
+            const elPayout = document.getElementById('admin-stat-payout');
+
+            if (elAgents) elAgents.innerText = totalAgentsCount;
+            if (elHours) elHours.innerText = grandTotalHours.toFixed(1) + ' h';
+            if (elPayout) elPayout.innerText = grandTotalPayout.toLocaleString('fr-FR') + ' $';
+        }
+
+        function renderAdminRoster() {
+            const agents = getAgents();
+            const tbody = document.getElementById('admin-roster-tbody');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+
+            const tableContainer = tbody.closest('.overflow-x-auto');
+            if (tableContainer && !tableContainer.style.maxHeight) {
+                tableContainer.style.maxHeight = '360px';
+                tableContainer.style.overflowY = 'auto';
+            }
+
+            agents.forEach(agent => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-dark-900/40 border-b border-gray-800/50';
+                tr.innerHTML = `
+                    <td class="py-3 px-4 font-bold text-white">${agent.matricule}</td>
+                    <td class="py-3 px-4 text-gray-200">${agent.name}</td>
+                    <td class="py-3 px-4">
+                        ${renderRoleBadgeHtml(agent.role)}
+                    </td>
+                    <td class="py-3 px-4 text-center">
+                        <div class="flex items-center justify-center gap-1.5">
+                            <button onclick="editAgent('${agent.matricule}')" class="p-1.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded-lg transition border border-blue-500/20" title="Modifier l'agent">
+                                <i class="fa-solid fa-pen text-xs"></i>
+                            </button>
+                            <button onclick="deleteAgent('${agent.matricule}')" class="p-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition border border-red-500/20" title="Supprimer de l'effectif">
+                                <i class="fa-solid fa-trash-can text-xs"></i>
+                            </button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function editAgent(matricule) {
+            const agents = getAgents();
+            const agent = agents.find(a => a.matricule === matricule);
+            if (!agent) return;
+
+            document.getElementById('agent-form-matricule').value = agent.matricule;
+            document.getElementById('agent-form-matricule').readOnly = true;
+            document.getElementById('agent-form-name').value = agent.name;
+            document.getElementById('agent-form-role').value = agent.role;
+
+            const formTitle = document.querySelector('#admin-subtab-agents .lg\\:col-span-1 h3');
+            if (formTitle) formTitle.innerHTML = '<i class="fa-solid fa-user-pen text-brand-500"></i> Modifier l\'Agent';
+            
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function handleSaveAgent(e) {
+            e.preventDefault();
+            const matriculeInput = document.getElementById('agent-form-matricule');
+            const matricule = matriculeInput.value.trim().toUpperCase();
+            const name = document.getElementById('agent-form-name').value.trim();
+            const role = document.getElementById('agent-form-role').value;
+
+            if (!matricule || !name) {
+                showToast('Matricule et nom obligatoires.', 'error');
+                return;
+            }
+
+            let agents = getAgents();
+            const existingIndex = agents.findIndex(a => a.matricule.toUpperCase() === matricule);
+
+            if (existingIndex >= 0) {
+                agents[existingIndex] = { matricule, name, role };
+                addLog('MODIF_AGENT', `Agent mis à jour : ${name} (${matricule}) sous rôle ${role}`);
+                showToast(`Agent ${name} mis à jour avec succès.`, 'success');
+            } else {
+                agents.push({ matricule, name, role });
+                addLog('AJOUT_AGENT', `Nouvel agent ajouté : ${name} (${matricule}) sous rôle ${role}`);
+                showToast(`Agent ${name} ajouté à l'effectif.`, 'success');
+            }
+
+            saveAgents(agents);
+            matriculeInput.value = '';
+            matriculeInput.readOnly = false;
+            document.getElementById('agent-form-name').value = '';
+            
+            const formTitle = document.querySelector('#admin-subtab-agents .lg\\:col-span-1 h3');
+            if (formTitle) formTitle.innerHTML = '<i class="fa-solid fa-user-plus text-brand-500"></i> Ajouter / Modifier un Agent';
+
+            renderAdminSpace();
+        }
+
+        function deleteAgent(matricule) {
+            const activeMatricule = originalLeadUser ? originalLeadUser.matricule : (currentUser ? currentUser.matricule : null);
+            if (activeMatricule && matricule === activeMatricule) {
+                showToast('Vous ne pouvez pas supprimer votre propre compte connecté !', 'error');
+                return;
+            }
+
+            let agents = getAgents();
+            const agentToDelete = agents.find(a => a.matricule === matricule);
+            if (!agentToDelete) {
+                showToast('Agent introuvable.', 'error');
+                return;
+            }
+
+            openConfirmModal(
+                'Supprimer l\'agent',
+                `Confirmer la suppression définitive de l'agent ${agentToDelete.name} (${matricule}) ?`,
+                () => {
+                    agents = agents.filter(a => a.matricule !== matricule);
+                    saveAgents(agents);
+
+                    let shifts = getShifts();
+                    shifts = shifts.filter(s => s.matricule !== matricule);
+                    saveShifts(shifts);
+
+                    addLog('SUPPR_AGENT', `Agent ${agentToDelete.name} (${matricule}) supprimé définitivement.`);
+                    showToast(`Agent ${agentToDelete.name} supprimé de l'effectif.`, 'info');
+
+                    renderAdminSpace();
+                }
+            );
+        }
+
+        function inspectAgentShifts(matricule) {
+            const agents = getAgents();
+            const agent = agents.find(a => a.matricule === matricule);
+            if (!agent) return;
+
+            if (!originalLeadUser && currentUser) {
+                originalLeadUser = currentUser;
+            }
+
+            currentUser = agent;
+            document.getElementById('user-display-name').innerHTML = `${agent.name} <span class="text-xs text-amber-400 font-normal">(Mode Inspection)</span>`;
+            switchTab('my-space');
+            showToast(`Consultation de la fiche de : ${agent.name}`, 'info');
+        }
+
+        function populateRoleInputsAndPerms() {
+            const roleNames = getRoleNames();
+            const roleColors = getRoleColors();
+            const rolePerms = getRolePermissions();
+            const container = document.getElementById('roles-inputs-container');
+            if (!container) return;
+            container.innerHTML = '';
+
+            Object.keys(roleNames).forEach(roleKey => {
+                const div = document.createElement('div');
+                div.className = 'flex flex-col md:flex-row md:items-center gap-3 bg-dark-900/40 p-3.5 rounded-xl border border-gray-800';
+                const curColor = roleColors[roleKey] || '#3b82f6';
+                const isFull = (roleKey === 'LEAD' || roleKey === 'COLEAD') ? true : !!rolePerms[roleKey];
+                const isBaseRole = (roleKey === 'AGENT' || roleKey === 'LEAD' || roleKey === 'COLEAD');
+
+                div.innerHTML = `
+                    <div class="flex-1">
+                        <label class="block text-[11px] font-semibold text-gray-400 uppercase mb-1">Libellé [${roleKey}]</label>
+                        <input type="text" data-role-key="${roleKey}" value="${roleNames[roleKey]}" required
+                            class="role-label-input w-full bg-dark-900 border border-gray-700 rounded-xl px-3.5 py-2 text-white text-xs focus:outline-none focus:border-brand-500">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-gray-400 uppercase mb-1">Couleur</label>
+                        <input type="color" data-role-color-key="${roleKey}" value="${curColor}"
+                            class="role-color-input h-9 w-12 bg-dark-900 border border-gray-700 rounded-lg p-0.5 cursor-pointer">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-gray-400 uppercase mb-1">Droits d'Accès</label>
+                        <select data-role-perm-key="${roleKey}" ${isBaseRole && (roleKey === 'LEAD' || roleKey === 'COLEAD') ? 'disabled' : ''}
+                            class="role-perm-select bg-dark-900 border border-gray-700 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-brand-500">
+                            <option value="false" ${!isFull ? 'selected' : ''}>Agent (Fiche Seule)</option>
+                            <option value="true" ${isFull ? 'selected' : ''}>Accès Total (Admin)</option>
+                        </select>
+                    </div>
+                    ${!isBaseRole ? `
+                        <button type="button" onclick="deleteCustomRole('${roleKey}')" class="md:self-end p-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl transition border border-red-500/20" title="Supprimer ce rôle">
+                            <i class="fa-solid fa-trash-can text-xs"></i>
+                        </button>
+                    ` : '<div class="w-8"></div>'}
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function populateRoleSelectOptions() {
+            const roleNames = getRoleNames();
+            const select = document.getElementById('agent-form-role');
+            if (!select) return;
+            select.innerHTML = '';
+
+            Object.keys(roleNames).forEach(roleKey => {
+                const option = document.createElement('option');
+                option.value = roleKey;
+                const isFull = hasFullAccess(roleKey);
+                option.innerText = `${roleNames[roleKey]} (${isFull ? 'Accès Total' : 'Espace Agent'})`;
+                select.appendChild(option);
+            });
+        }
+
+        function handleCreateNewRole(e) {
+            e.preventDefault();
+            const roleCode = document.getElementById('new-role-code').value.trim().toUpperCase().replace(/\s+/g, '_');
+            const roleLabel = document.getElementById('new-role-label').value.trim();
+            const roleColor = document.getElementById('new-role-color').value;
+            const accessRadio = document.querySelector('input[name="new-role-access"]:checked');
+            const isFullAccess = accessRadio ? (accessRadio.value === 'full') : false;
+
+            if (!roleCode || !roleLabel) {
+                showToast('Code et libellé du rôle obligatoires.', 'error');
+                return;
+            }
+
+            let roleNames = getRoleNames();
+            let roleColors = getRoleColors();
+            let rolePerms = getRolePermissions();
+
+            if (roleNames[roleCode]) {
+                showToast(`Le rôle '${roleCode}' existe déjà.`, 'error');
+                return;
+            }
+
+            roleNames[roleCode] = roleLabel;
+            roleColors[roleCode] = roleColor;
+            rolePerms[roleCode] = isFullAccess;
+
+            saveRoleNames(roleNames);
+            saveRoleColors(roleColors);
+            saveRolePermissions(rolePerms);
+
+            document.getElementById('new-role-code').value = '';
+            document.getElementById('new-role-label').value = '';
+            document.getElementById('new-role-color').value = '#3b82f6';
+
+            addLog('CREAT_ROLE', `Création du rôle : ${roleCode} ("${roleLabel}") | Accès: ${isFullAccess ? 'Total' : 'Agent'}`);
+            showToast(`Rôle '${roleLabel}' créé avec succès.`, 'success');
+
+            renderAdminSpace();
+        }
+
+        function deleteCustomRole(roleKey) {
+            if (roleKey === 'AGENT' || roleKey === 'LEAD' || roleKey === 'COLEAD') {
+                showToast('Impossible de supprimer les rôles de base du système.', 'error');
+                return;
+            }
+
+            openConfirmModal('Supprimer le rôle', `Voulez-vous vraiment supprimer le rôle '${roleKey}' ?`, () => {
+                let roleNames = getRoleNames();
+                let roleColors = getRoleColors();
+                let rolePerms = getRolePermissions();
+
+                delete roleNames[roleKey];
+                delete roleColors[roleKey];
+                delete rolePerms[roleKey];
+
+                saveRoleNames(roleNames);
+                saveRoleColors(roleColors);
+                saveRolePermissions(rolePerms);
+
+                addLog('SUPPR_ROLE', `Suppression du rôle personnalisé : ${roleKey}`);
+                showToast(`Rôle ${roleKey} supprimé.`, 'info');
+
+                renderAdminSpace();
+            });
+        }
+
+        function handleSaveRoleNames(e) {
+            e.preventDefault();
+            const labelInputs = document.querySelectorAll('.role-label-input');
+            const colorInputs = document.querySelectorAll('.role-color-input');
+            const permSelects = document.querySelectorAll('.role-perm-select');
+
+            const updatedRoles = {};
+            const updatedColors = {};
+            const updatedPerms = {};
+
+            labelInputs.forEach(input => {
+                const key = input.getAttribute('data-role-key');
+                const val = input.value.trim();
+                if (val) updatedRoles[key] = val;
+            });
+
+            colorInputs.forEach(input => {
+                const key = input.getAttribute('data-role-color-key');
+                const val = input.value;
+                if (val) updatedColors[key] = val;
+            });
+
+            permSelects.forEach(sel => {
+                const key = sel.getAttribute('data-role-perm-key');
+                const val = (sel.value === 'true');
+                updatedPerms[key] = val;
+            });
+
+            saveRoleNames(updatedRoles);
+            saveRoleColors(updatedColors);
+            saveRolePermissions(updatedPerms);
+
+            addLog('CONFIG_ROLES', `Intitulés, couleurs et permissions des rôles mis à jour.`);
+            showToast('Intitulés, couleurs et permissions enregistrés !', 'success');
+
+            if (currentUser) {
+                document.getElementById('user-display-role').innerText = `Matricule: ${currentUser.matricule} | Rôle: ${getRoleLabel(currentUser.role)}`;
+            }
+
+            renderAdminSpace();
+        }
+
+        function clearLogs() {
+            openConfirmModal('Effacer les logs', 'Voulez-vous vraiment effacer tout le journal d\'activités ?', () => {
+                saveLogs([]);
+                renderLogsSpace();
+                showToast('Journal des logs effacé.', 'info');
+            });
+        }
+
+        function exportPaySummary() {
+            const { monday, sunday } = getWeekRange(currentWeekOffset);
+            const agents = getAgents();
+            const shifts = getShifts();
+
+            let summaryText = `=== RÉCAPITULATIF DES PAIES DISPATCH ===\n`;
+            summaryText += `Période : ${formatDateFr(monday)} au ${formatDateFr(sunday)}\n\n`;
+
+            let grandTotal = 0;
+
+            agents.forEach(agent => {
+                const agentShifts = shifts.filter(s => s.matricule === agent.matricule && isDateInWeek(s.date, monday, sunday));
+                let stdH = 0;
+                let nightH = 0;
+                let pay = 0;
+
+                agentShifts.forEach(s => {
+                    const dt = calculateShiftDetails(s.startTime, s.endTime);
+                    stdH += dt.stdHours;
+                    nightH += dt.nightHours;
+                    pay += dt.totalPay;
+                });
+
+                if (pay > 0) {
+                    summaryText += `• [${agent.matricule}] ${agent.name} : ${stdH.toFixed(1)}h Std + ${nightH.toFixed(1)}h Nuit => TOTAL : ${pay.toLocaleString('fr-FR')} $\n`;
+                    grandTotal += pay;
+                }
+            });
+
+            summaryText += `\nMASSE SALARIALE TOTALE : ${grandTotal.toLocaleString('fr-FR')} $`;
+
+            const textarea = document.createElement('textarea');
+            textarea.value = summaryText;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+
+            showToast('Récapitulatif copié dans le presse-papier !', 'success');
+        }
+
+        function renderLogsSpace() {
+            const logs = getLogs();
+            const tbody = document.getElementById('logs-tbody');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+
+            logs.forEach(log => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-dark-900/40 border-b border-gray-800/40';
+                tr.innerHTML = `
+                    <td class="py-2.5 px-4 text-gray-400">${log.timestamp}</td>
+                    <td class="py-2.5 px-4 font-bold text-white">${log.author}</td>
+                    <td class="py-2.5 px-4">
+                        <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-dark-900 border border-gray-700 text-brand-400">${log.action}</span>
+                    </td>
+                    <td class="py-2.5 px-4 text-gray-300">${log.details}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            const bgColors = {
+                success: 'bg-emerald-950/90 border-emerald-500/50 text-emerald-200',
+                error: 'bg-red-950/90 border-red-500/50 text-red-200',
+                info: 'bg-brand-950/90 border-brand-500/50 text-brand-200'
+            };
+
+            const icons = {
+                success: 'fa-circle-check text-emerald-400',
+                error: 'fa-circle-xmark text-red-400',
+                info: 'fa-circle-info text-brand-400'
+            };
+
+            toast.className = `p-4 rounded-xl border shadow-xl backdrop-blur-md flex items-center gap-3 text-xs font-medium transform transition-all duration-300 translate-y-2 opacity-0 ${bgColors[type] || bgColors.info}`;
+            toast.innerHTML = `
+                <i class="fa-solid ${icons[type] || icons.info} text-base"></i>
+                <span class="flex-1">${message}</span>
+            `;
+
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            }, 10);
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 4000);
+        }
+
+        window.onload = function() {
+            if (!localStorage.getItem(STORAGE_KEY_AGENTS)) {
+                saveAgents(DEFAULT_AGENTS);
+            } else {
+                const currentAgents = JSON.parse(localStorage.getItem(STORAGE_KEY_AGENTS) || '[]');
+                if (currentAgents.length === 0) {
+                    saveAgents(DEFAULT_AGENTS);
+                }
+            }
+
+            if (!localStorage.getItem(STORAGE_KEY_SHIFTS)) {
+                generateMockShifts();
+            }
+            if (!localStorage.getItem(STORAGE_KEY_ROLE_NAMES)) {
+                saveRoleNames(DEFAULT_ROLE_NAMES);
+            }
+            if (!localStorage.getItem(STORAGE_KEY_ROLE_COLORS)) {
+                saveRoleColors(DEFAULT_ROLE_COLORS);
+            }
+            if (!localStorage.getItem(STORAGE_KEY_ROLE_PERMS)) {
+                saveRolePermissions(DEFAULT_ROLE_PERMS);
+            }
+
+            const colorPicker = document.getElementById('new-role-color');
+            if (colorPicker) {
+                colorPicker.addEventListener('input', (e) => {
+                    const hex = e.target.value;
+                    const preview = document.getElementById('new-role-badge-preview');
+                    if (preview) {
+                        preview.style.backgroundColor = `${hex}20`;
+                        preview.style.color = hex;
+                        preview.style.borderColor = `${hex}50`;
+                    }
+                });
+            }
+
+            updateWeekHeader();
+        };
+    </script>
+</body>
+</html>
